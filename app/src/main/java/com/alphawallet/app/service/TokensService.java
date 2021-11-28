@@ -133,7 +133,7 @@ public class TokensService
                         .filter(tokenInfo -> (!TextUtils.isEmpty(tokenInfo.name) || !TextUtils.isEmpty(tokenInfo.symbol)) && tokenInfo.chainId != 0)
                         .map(tokenInfo -> { tokenInfo.isEnabled = false; return tokenInfo; }) //set default visibility to false
                         .flatMap(tokenInfo -> tokenRepository.determineCommonType(tokenInfo).toObservable()
-                            .map(contractType -> tokenFactory.createToken(tokenInfo, contractType, ethereumNetworkRepository.getNetworkByChain(t.chainId).getShortName())))
+                                .map(contractType -> tokenFactory.createToken(tokenInfo, contractType, ethereumNetworkRepository.getNetworkByChain(t.chainId).getShortName())))
                         .subscribeOn(Schedulers.io())
                         .observeOn(Schedulers.io())
                         .subscribe(this::finishAddToken, err -> onCheckError(err, t), this::finishTokenCheck);
@@ -404,16 +404,18 @@ public class TokensService
         walletStartup = false;
 
         //one time pass over tokens with a null name
-        tokenRepository.fetchAllTokensWithBlankName(currentAddress, networkFilter)
-                .map(contractAddrs -> {
-                    Collections.addAll(unknownTokens, contractAddrs);
-                    startUnknownCheck();
-                    return 1;
-                })
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .subscribe()
-                .isDisposed();
+        if(currentAddress != null) {
+            tokenRepository.fetchAllTokensWithBlankName(currentAddress, networkFilter)
+                    .map(contractAddrs -> {
+                        Collections.addAll(unknownTokens, contractAddrs);
+                        startUnknownCheck();
+                        return 1;
+                    })
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(Schedulers.io())
+                    .subscribe()
+                    .isDisposed();
+        }
     }
 
     public List<Long> getNetworkFilters()
@@ -448,6 +450,9 @@ public class TokensService
 
     private void checkIssueTokens()
     {
+        if(currentAddress == null) {
+            return;
+        }
         tokenRepository.fetchTokensThatMayNeedUpdating(currentAddress, networkFilter)
                 .map(tokens -> {
                     for (Token t : tokens)
@@ -478,6 +483,9 @@ public class TokensService
 
     private void checkTokensBalance()
     {
+        if(currentAddress == null) {
+            return;
+        }
         final Token t = getNextInBalanceUpdateQueue();
 
         if (t != null)
@@ -881,7 +889,7 @@ public class TokensService
                         .subscribeOn(Schedulers.io())
                         .observeOn(Schedulers.io())
                         .subscribe())
-                        .isDisposed();
+                .isDisposed();
     }
 
     private Completable enableToken(String walletAddr, Token token)
